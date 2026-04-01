@@ -18,23 +18,23 @@ class Config:
     OWNER_ID = int(os.environ.get("OWNER_ID", 0))
 
     # Force Subscribe Channels
-    FORCE_SUB_CHANNEL_1 = os.environ.get("FORCE_SUB_CHANNEL_1", "zerodev2")  # username or -100xxx id
-    FORCE_SUB_CHANNEL_2 = os.environ.get("FORCE_SUB_CHANNEL_2", "mvxyoffcail")
+    FORCE_SUB_CHANNEL_1 = "zerodev2"  # username or -100xxx id
+    FORCE_SUB_CHANNEL_2 = "mvxyoffcail"
 
     # Log Channel
     PREMIUM_LOGS = int(os.environ.get("PREMIUM_LOGS", 0)) if os.environ.get("PREMIUM_LOGS") else None
 
     # Welcome Image API
-    WELCOME_IMAGE = os.environ.get("WELCOME_IMAGE", "https://api.aniwallpaper.workers.dev/random?type=girl")
+    WELCOME_IMAGE = "https://api.aniwallpaper.workers.dev/random?type=girl"
 
     # Force Sub Banner
-    FORCE_SUB_IMAGE = os.environ.get("FORCE_SUB_IMAGE", "https://i.ibb.co/pr2H8cwT/img-8312532076.jpg")
+    FORCE_SUB_IMAGE = "https://i.ibb.co/pr2H8cwT/img-8312532076.jpg"
 
     # Timezone
     TIMEZONE = "Asia/Kolkata"
 
     # Pyrogram workers
-    WORKERS = int(os.environ.get("WORKERS", 500))
+    WORKERS = 100
 
     # Premium plans via Telegram Stars: {stars_amount: "duration_string"}
     STAR_PREMIUM_PLANS = {

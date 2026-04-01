@@ -2,10 +2,10 @@ import pytz
 import datetime
 import asyncio
 import logging
-from pyrogram import Client, filters
+from pyrogram import Client, filters, raw
 from pyrogram.errors.exceptions.bad_request_400 import MessageTooLong
 from pyrogram.types import (
-    InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice
+    InlineKeyboardMarkup, InlineKeyboardButton
 )
 
 from config import Config
@@ -226,8 +226,6 @@ async def premium_user(client, message):
 
 @Client.on_message(filters.command("plan"))
 async def plan(client, message):
-    user_id = message.from_user.id
-    users = message.from_user.mention
     btn = [[
         InlineKeyboardButton("• ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", callback_data="buy_info"),
     ], [
@@ -254,36 +252,58 @@ async def premium_info_cb(client, callback_query):
     for stars, duration in STAR_PREMIUM_PLANS.items():
         buttons.append([InlineKeyboardButton(f"⭐ {stars} Stars — {duration}", callback_data=f"buy_{stars}")])
     buttons.append([InlineKeyboardButton("❌ ᴄʟᴏꜱᴇ", callback_data="close_data")])
-    await callback_query.message.edit_caption(
-        caption=script.BPREMIUM_TXT,
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+    try:
+        await callback_query.message.edit_caption(
+            caption=script.BPREMIUM_TXT,
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+    except Exception:
+        await callback_query.message.reply_text(
+            script.BPREMIUM_TXT,
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
     await callback_query.answer()
 
 
-# ─── Telegram Stars payment ───────────────────────────────────────────────────
+# ─── Telegram Stars payment via raw API (LabeledPrice not in pyrogram.types) ─
 
 @Client.on_callback_query(filters.regex(r"^buy_\d+$"))
 async def premium_button(client, callback_query):
     try:
         amount = int(callback_query.data.split("_")[1])
-        if amount in STAR_PREMIUM_PLANS:
-            await client.send_invoice(
-                chat_id=callback_query.message.chat.id,
-                title="Premium Subscription",
-                description=f"Pay {amount} Stars & Get Premium For {STAR_PREMIUM_PLANS[amount]}",
-                payload=f"renamepremium_{amount}",
-                currency="XTR",
-                prices=[LabeledPrice(label="Premium Subscription", amount=amount)],
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ᴄᴀɴᴄᴇʟ 🚫", callback_data="close_data")]])
-            )
-            await callback_query.answer()
-        else:
+        if amount not in STAR_PREMIUM_PLANS:
             await callback_query.answer("⚠️ Invalid Premium Package.", show_alert=True)
+            return
+
+        peer = await client.resolve_peer(callback_query.message.chat.id)
+        cancel_btn = InlineKeyboardMarkup([[InlineKeyboardButton("ᴄᴀɴᴄᴇʟ 🚫", callback_data="close_data")]])
+
+        await client.invoke(
+            raw.functions.messages.SendMedia(
+                peer=peer,
+                media=raw.types.InputMediaInvoice(
+                    title="Premium Subscription",
+                    description=f"Pay {amount} Stars & Get Premium For {STAR_PREMIUM_PLANS[amount]}",
+                    invoice=raw.types.Invoice(
+                        currency="XTR",
+                        prices=[raw.types.LabeledPrice(label="Premium Subscription", amount=amount)],
+                    ),
+                    payload=f"renamepremium_{amount}".encode(),
+                    provider="",
+                    provider_data=raw.types.DataJSON(data="{}"),
+                ),
+                message="",
+                random_id=client.rnd_id(),
+                reply_markup=await cancel_btn.write(client),
+            )
+        )
+        await callback_query.answer()
     except Exception as e:
         log.exception(e)
         await callback_query.answer("🚫 Error Processing Payment. Try again.", show_alert=True)
 
+
+# ─── Successful payment handler ───────────────────────────────────────────────
 
 def successful_payment_filter(_, __, message):
     try:
